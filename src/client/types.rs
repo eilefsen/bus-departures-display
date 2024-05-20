@@ -5,9 +5,9 @@ use time::{format_description::well_known::Iso8601, OffsetDateTime};
 
 #[derive(Debug)]
 pub struct Departure {
-    start_time: OffsetDateTime,
-    leaving_in: String,
-    line_number: String,
+    pub start_time: OffsetDateTime,
+    pub leaving_in: String,
+    pub line_number: String,
 }
 impl Departure {
     pub fn from_top_level_data(data: TopLevelData) -> Vec<Departure> {
