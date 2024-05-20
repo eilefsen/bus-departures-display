@@ -23,5 +23,6 @@ pub fn display(
     let display = Builder::with_model(di, ILI9341Rgb666)
         .init(&mut delay, Some(rst))
         .map_err(|_| Box::<dyn Error>::from("display init"))?;
+    log::info!("Display driver initialized!");
     Ok(DisplayWithBacklight { display, backlight })
 }

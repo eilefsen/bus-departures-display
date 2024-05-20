@@ -22,6 +22,18 @@ use display::DisplayWithBacklight;
 fn main() -> Result<(), Box<dyn Error>> {
     init::esp();
     let peri = Peripherals::take()?;
+    let _wifi = match init::wifi(peri.modem) {
+        Ok(w) => {
+            log::info!("WiFi Successfully Connected!");
+            w
+        }
+        Err(err) => {
+            log::error!("Could not connect to WiFi!");
+            return Err(err);
+        }
+    };
+    let _sntp = init::sntp()?;
+
     let spi = init::spi(
         peri.spi3,
         peri.pins.gpio10,
