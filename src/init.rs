@@ -23,7 +23,9 @@ pub fn esp() {
     log::info!("Esp initialized!");
 }
 
-pub fn wifi(modem: Modem) -> Result<BlockingWifi<EspWifi<'static>>, Box<dyn Error>> {
+type Wifi = BlockingWifi<EspWifi<'static>>;
+
+pub fn wifi(modem: Modem) -> Result<Wifi, Box<dyn Error>> {
     let sysloop = EspSystemEventLoop::take()?;
     let nvs = EspDefaultNvsPartition::take()?;
     let mut wifi = BlockingWifi::wrap(EspWifi::new(modem, sysloop.clone(), Some(nvs))?, sysloop)?;
