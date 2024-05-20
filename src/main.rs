@@ -48,3 +48,18 @@ pub type MySpiDriver = SpiDeviceDriver<'static, SpiDriver<'static>>;
 pub type MySpiInterface = SPIInterfaceNoCS<MySpiDriver, PinDriver<'static, Gpio5, Output>>;
 pub type MySpiDisplay = Display<MySpiInterface, ILI9341Rgb666, PinDriver<'static, Gpio4, Output>>;
 
+#[toml_cfg::toml_config]
+pub struct Config {
+    #[default("Wokwi-GUEST")]
+    wifi_ssid: &'static str,
+    #[default("")]
+    wifi_psk: &'static str,
+    #[default("")]
+    from_place1: &'static str,
+    #[default("")]
+    to_place1: &'static str,
+    #[default("")]
+    from_place2: &'static str,
+    #[default("")]
+    to_place2: &'static str,
+}
