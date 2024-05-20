@@ -15,13 +15,9 @@ use embedded_graphics::{
 use mipidsi::models::ILI9341Rgb666;
 use mipidsi::Display;
 
-use display::DisplayWithBacklight;
 pub mod display;
 pub mod init;
-
-pub type MySpiDriver = SpiDeviceDriver<'static, SpiDriver<'static>>;
-pub type MySpiInterface = SPIInterfaceNoCS<MySpiDriver, PinDriver<'static, Gpio5, Output>>;
-pub type MySpiDisplay = Display<MySpiInterface, ILI9341Rgb666, PinDriver<'static, Gpio4, Output>>;
+use display::DisplayWithBacklight;
 
 fn main() -> Result<(), Box<dyn Error>> {
     init::esp();
@@ -47,3 +43,8 @@ fn app(mut display: MySpiDisplay) -> Result<(), Box<dyn Error>> {
         sleep(Duration::from_secs(20));
     }
 }
+
+pub type MySpiDriver = SpiDeviceDriver<'static, SpiDriver<'static>>;
+pub type MySpiInterface = SPIInterfaceNoCS<MySpiDriver, PinDriver<'static, Gpio5, Output>>;
+pub type MySpiDisplay = Display<MySpiInterface, ILI9341Rgb666, PinDriver<'static, Gpio4, Output>>;
+
