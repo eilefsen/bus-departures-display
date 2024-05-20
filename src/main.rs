@@ -1,10 +1,49 @@
-fn main() {
-    // It is necessary to call this function once. Otherwise some patches to the runtime
-    // implemented by esp-idf-sys might not link properly. See https://github.com/esp-rs/esp-idf-template/issues/71
-    esp_idf_svc::sys::link_patches();
+use std::thread::sleep;
+use std::{error::Error, time::Duration};
 
-    // Bind the log crate to the ESP Logging facilities
-    esp_idf_svc::log::EspLogger::initialize_default();
+use esp_idf_svc::hal::{
+    gpio::*,
+    peripherals::Peripherals,
+    spi::{SpiDeviceDriver, SpiDriver},
+};
 
-    log::info!("Hello, world!");
+use display_interface_spi::SPIInterfaceNoCS;
+use embedded_graphics::{
+    draw_target::DrawTarget,
+    pixelcolor::{Rgb666, RgbColor},
+};
+use mipidsi::models::ILI9341Rgb666;
+use mipidsi::Display;
+
+use display::DisplayWithBacklight;
+pub mod display;
+pub mod init;
+
+pub type MySpiDriver = SpiDeviceDriver<'static, SpiDriver<'static>>;
+pub type MySpiInterface = SPIInterfaceNoCS<MySpiDriver, PinDriver<'static, Gpio5, Output>>;
+pub type MySpiDisplay = Display<MySpiInterface, ILI9341Rgb666, PinDriver<'static, Gpio4, Output>>;
+
+fn main() -> Result<(), Box<dyn Error>> {
+    init::esp();
+    let peri = Peripherals::take()?;
+    let spi = init::spi(
+        peri.spi3,
+        peri.pins.gpio10,
+        peri.pins.gpio11,
+        peri.pins.gpio12,
+        peri.pins.gpio13,
+    )?;
+    let DisplayWithBacklight {
+        display,
+        backlight: _backlight,
+    } = init::display(spi, peri.pins.gpio4, peri.pins.gpio5, peri.pins.gpio6)?;
+    app(display)
+}
+
+fn app(mut display: MySpiDisplay) -> Result<(), Box<dyn Error>> {
+    let _ = display.clear(Rgb666::BLUE);
+
+    loop {
+        sleep(Duration::from_secs(20));
+    }
 }
