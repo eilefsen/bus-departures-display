@@ -20,6 +20,7 @@ pub fn esp() {
     esp_idf_svc::sys::link_patches();
     // Bind the log crate to the ESP Logging facilities
     esp_idf_svc::log::EspLogger::initialize_default();
+
     log::info!("Esp initialized!");
 }
 
@@ -29,23 +30,28 @@ pub fn wifi(modem: Modem) -> Result<Wifi, Box<dyn Error>> {
     let sysloop = EspSystemEventLoop::take()?;
     let nvs = EspDefaultNvsPartition::take()?;
     let mut wifi = BlockingWifi::wrap(EspWifi::new(modem, sysloop.clone(), Some(nvs))?, sysloop)?;
+    log::info!("Created wifi object");
 
-    let client = Configuration::Client(ClientConfiguration {
+    let cfg = Configuration::Client(ClientConfiguration {
         ssid: heapless::String::try_from(CONFIG.wifi_ssid).unwrap(),
         password: heapless::String::try_from(CONFIG.wifi_psk).unwrap(),
         auth_method: esp_idf_svc::wifi::AuthMethod::None,
         ..Default::default()
     });
-    let cfg = client;
+    log::info!("Created config client {:?}", cfg);
 
     wifi.set_configuration(&cfg)?;
+    log::info!("Wifi config set");
     wifi.start()?;
+    log::info!("Wifi start");
     wifi.connect()?;
+    log::info!("Wifi connect");
     wifi.wait_netif_up()?;
+    log::info!("Wifi netif is up");
     // Print Out Wifi Connection Configuration
     while !wifi.is_connected()? {
         let config = wifi.get_configuration()?;
-        println!("Waiting for station {:?}", config);
+        log::info!("Waiting for station {:?}", config);
     }
 
     log::info!("WiFi initialized!");
