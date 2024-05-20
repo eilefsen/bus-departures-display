@@ -15,6 +15,7 @@ use embedded_graphics::{
 use mipidsi::models::ILI9341Rgb666;
 use mipidsi::Display;
 
+pub mod client;
 pub mod display;
 pub mod init;
 use display::DisplayWithBacklight;
