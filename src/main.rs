@@ -1,5 +1,5 @@
 use std::thread::sleep;
-use std::time::Duration;
+use std::time::{Duration, Instant};
 
 use embedded_graphics::pixelcolor::Rgb565;
 use embedded_graphics::primitives::Rectangle;
@@ -43,6 +43,7 @@ pub struct Config {
 }
 
 const LARGE_FONT: MonoTextStyle<'_, Rgb565> = MonoTextStyle::new(&FONT_24X32, Rgb565::WHITE);
+const LARGE_FONT_BLACK: MonoTextStyle<'_, Rgb565> = MonoTextStyle::new(&FONT_24X32, Rgb565::BLACK);
 const _NORMAL_FONT: MonoTextStyle<'_, Rgb565> = MonoTextStyle::new(&FONT_12X16, Rgb565::WHITE);
 
 fn main() -> Result<(), EspDisplayError> {
@@ -103,6 +104,7 @@ fn app(mut display: MySpiDisplay) -> Result<(), EspDisplayError> {
         make_query(CONFIG.from_place2, CONFIG.to_place2),
     );
     let client = client::EnturClient::new(url, headers, query)?;
+    let mut departures: Vec<Departure> = vec![];
     loop {
         let data = match client.read_write_request() {
             Ok(val) => val,
@@ -113,63 +115,88 @@ fn app(mut display: MySpiDisplay) -> Result<(), EspDisplayError> {
                 continue;
             }
         };
-        display.fill_solid(
-            &Rectangle::new(Point::new(0, 32), Size::new(240, 288)),
-            Rgb565::BLACK,
+
+        let y_offset = 4;
+        let y_gap = 4;
+        let height = 36 + y_gap;
+
+        // erase previous times
+        display_departure_times(
+            &departures,
+            &mut display,
+            LARGE_FONT_BLACK,
+            y_offset,
+            height,
         )?;
+
+        departures = Departure::from_top_level_data(data.clone());
+
+        display_departure_lines(&departures, &mut display, y_offset, height)?;
+
         for _ in 0..SLEEP_SECONDS {
-            display.fill_solid(
-                &Rectangle::new(Point::new(72, 32), Size::new(120, 288)),
-                Rgb565::BLACK,
+            display_departure_times(
+                &departures,
+                &mut display,
+                LARGE_FONT_BLACK,
+                y_offset,
+                height,
             )?;
-            let departures = Departure::from_top_level_data(data.clone());
+            departures = Departure::from_top_level_data(data.clone());
             log::info!("Response json: {:?}", departures);
-            match display_departures(departures, &mut display) {
-                Ok(x) => x,
-                Err(err) => log::error!("{:?}", err),
-            };
+            // erase previous times
+            display_departure_times(&departures, &mut display, LARGE_FONT, y_offset, height)?;
             sleep(Duration::from_secs(1))
         }
     }
 }
 
-fn display_departures(
-    departures: Vec<Departure>,
-    display: &mut MySpiDisplay,
-) -> Result<(), EspDisplayError> {
-    let y_offset = 4;
-    let y_gap = 4;
-    let height = 36 + y_gap;
+fn display_seconds() {}
 
+fn display_departure_times(
+    departures: &[Departure],
+    display: &mut MySpiDisplay,
+    text_style: MonoTextStyle<'_, Rgb565>,
+    y_offset: i32,
+    height: i32,
+) -> Result<(), EspDisplayError> {
     for (i, d) in departures.iter().enumerate() {
-        {
-            display.fill_solid(
-                &Rectangle::new(
-                    Point::new(12, y_offset + ((i as i32 + 1) * height)),
-                    Size::new(50, 36),
-                ),
-                Rgb565::RED,
-            )?;
-            match Text::with_baseline(
-                d.line_number.as_str(),
-                Point::new(14, y_offset + ((i as i32 + 1) * height + (height / 2))),
-                LARGE_FONT,
-                Baseline::Middle,
-            )
-            .draw(display)
-            {
-                Ok(_) => (),
-                Err(err) => log::error!("display: draw: {:?}", err),
-            };
-        }
-        match Text::with_baseline(
-            format!("{: >5}", d.leaving_in).as_str(),
+        let formatted_time = format!("{: >5}", d.leaving_in);
+        let t = Text::with_baseline(
+            formatted_time.as_str(),
             Point::new(72, y_offset + ((i as i32 + 1) * height + (height / 2))),
+            text_style,
+            Baseline::Middle,
+        );
+        match t.draw(display) {
+            Ok(_) => (),
+            Err(err) => log::error!("display: draw: {:?}", err),
+        };
+    }
+
+    Ok(())
+}
+
+fn display_departure_lines(
+    departures: &[Departure],
+    display: &mut MySpiDisplay,
+    y_offset: i32,
+    height: i32,
+) -> Result<(), EspDisplayError> {
+    for (i, d) in departures.iter().enumerate() {
+        display.fill_solid(
+            &Rectangle::new(
+                Point::new(12, y_offset + ((i as i32 + 1) * height)),
+                Size::new(50, 36),
+            ),
+            Rgb565::RED,
+        )?;
+        let t = Text::with_baseline(
+            d.line_number.as_str(),
+            Point::new(14, y_offset + ((i as i32 + 1) * height + (height / 2))),
             LARGE_FONT,
             Baseline::Middle,
-        )
-        .draw(display)
-        {
+        );
+        match t.draw(display) {
             Ok(_) => (),
             Err(err) => log::error!("display: draw: {:?}", err),
         };
