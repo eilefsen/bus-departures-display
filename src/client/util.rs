@@ -15,11 +15,8 @@ pub fn make_query(from: &str, to: &str) -> String {
 				}},
 				numTripPatterns: 4
 				modes: {{
-					accessMode: foot
-					egressMode: foot
 					transportModes: [{{
 						transportMode: bus
-						transportSubModes: [localBus]
 					}}]
 				}}
 			) {{
