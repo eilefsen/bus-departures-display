@@ -1,6 +1,7 @@
 use std::thread::sleep;
-use std::{error::Error, time::Duration};
+use std::time::Duration;
 
+use embedded_graphics::pixelcolor::Rgb565;
 use embedded_graphics::primitives::Rectangle;
 use embedded_vintage_fonts::{FONT_12X16, FONT_24X32};
 use esp_idf_svc::hal::{
@@ -13,19 +14,15 @@ use display_interface_spi::SPIInterfaceNoCS;
 use embedded_graphics::geometry::Point;
 use embedded_graphics::mono_font::MonoTextStyle;
 use embedded_graphics::text::{Baseline, Text};
-use embedded_graphics::{
-    draw_target::DrawTarget,
-    pixelcolor::{Rgb666, RgbColor},
-    prelude::*,
-};
-use mipidsi::models::ILI9341Rgb666;
+use embedded_graphics::{draw_target::DrawTarget, pixelcolor::RgbColor, prelude::*};
 use mipidsi::Display;
+use mipidsi::{models::ILI9341Rgb565, Orientation};
 
 pub mod client;
 pub mod display;
 pub mod init;
-use client::{util::make_query, EnturClient};
-use display::DisplayWithBacklight;
+use client::util::make_query;
+use display::{DisplayWithBacklight, EspDisplayError};
 
 use crate::client::types::Departure;
 
@@ -45,11 +42,12 @@ pub struct Config {
     to_place2: &'static str,
 }
 
-const LARGE_FONT: MonoTextStyle<'_, Rgb666> = MonoTextStyle::new(&FONT_24X32, Rgb666::WHITE);
-const NORMAL_FONT: MonoTextStyle<'_, Rgb666> = MonoTextStyle::new(&FONT_12X16, Rgb666::WHITE);
+const LARGE_FONT: MonoTextStyle<'_, Rgb565> = MonoTextStyle::new(&FONT_24X32, Rgb565::WHITE);
+const _NORMAL_FONT: MonoTextStyle<'_, Rgb565> = MonoTextStyle::new(&FONT_12X16, Rgb565::WHITE);
 
-fn main() -> Result<(), Box<dyn Error>> {
+fn main() -> Result<(), EspDisplayError> {
     init::esp();
+
     let peri = Peripherals::take()?;
     let _wifi = match init::wifi(peri.modem) {
         Ok(w) => {
@@ -58,7 +56,7 @@ fn main() -> Result<(), Box<dyn Error>> {
         }
         Err(err) => {
             log::error!("Could not connect to WiFi!");
-            return Err(err);
+            return Err(err.into());
         }
     };
     let _sntp = init::sntp()?;
@@ -75,16 +73,11 @@ fn main() -> Result<(), Box<dyn Error>> {
         backlight: _backlight,
     } = init::display(spi, peri.pins.gpio4, peri.pins.gpio5, peri.pins.gpio6)?;
 
-    // let data = client.read_write_request()?;
-
     app(display)
 }
 
-fn app(mut display: MySpiDisplay) -> Result<(), Box<dyn Error>> {
-    display
-        .set_orientation(mipidsi::Orientation::Portrait(false))
-        .unwrap();
-    let _ = display.clear(Rgb666::BLACK);
+fn app(mut display: MySpiDisplay) -> Result<(), EspDisplayError> {
+    display.set_orientation(Orientation::Portrait(false))?;
 
     match Text::with_baseline("LEAVING IN ", Point::new(1, 0), LARGE_FONT, Baseline::Top)
         .draw(&mut display)
@@ -120,14 +113,22 @@ fn app(mut display: MySpiDisplay) -> Result<(), Box<dyn Error>> {
                 continue;
             }
         };
-        for _ in 0..(SLEEP_SECONDS / 4) {
+        display.fill_solid(
+            &Rectangle::new(Point::new(0, 32), Size::new(240, 288)),
+            Rgb565::BLACK,
+        )?;
+        for _ in 0..SLEEP_SECONDS {
+            display.fill_solid(
+                &Rectangle::new(Point::new(72, 32), Size::new(120, 288)),
+                Rgb565::BLACK,
+            )?;
             let departures = Departure::from_top_level_data(data.clone());
             log::info!("Response json: {:?}", departures);
             match display_departures(departures, &mut display) {
                 Ok(x) => x,
-                Err(err) => log::error!("{}", err),
+                Err(err) => log::error!("{:?}", err),
             };
-            sleep(Duration::from_secs(SLEEP_SECONDS / 4))
+            sleep(Duration::from_secs(1))
         }
     }
 }
@@ -135,27 +136,25 @@ fn app(mut display: MySpiDisplay) -> Result<(), Box<dyn Error>> {
 fn display_departures(
     departures: Vec<Departure>,
     display: &mut MySpiDisplay,
-) -> Result<(), Box<dyn Error>> {
-    display
-        .fill_solid(
-            &Rectangle::new(Point::new(0, 32), Size::new(240, 288)),
-            Rgb666::BLACK,
-        )
-        .unwrap();
+) -> Result<(), EspDisplayError> {
+    let y_offset = 4;
+    let y_gap = 4;
+    let height = 36 + y_gap;
 
     for (i, d) in departures.iter().enumerate() {
         {
-            display
-                .fill_solid(
-                    &Rectangle::new(Point::new(12, (i as i32 + 1) * 36), Size::new(50, 32)),
-                    Rgb666::BLUE,
-                )
-                .unwrap();
+            display.fill_solid(
+                &Rectangle::new(
+                    Point::new(12, y_offset + ((i as i32 + 1) * height)),
+                    Size::new(50, 36),
+                ),
+                Rgb565::RED,
+            )?;
             match Text::with_baseline(
                 d.line_number.as_str(),
-                Point::new(16, (i as i32 + 1) * 32),
+                Point::new(14, y_offset + ((i as i32 + 1) * height + (height / 2))),
                 LARGE_FONT,
-                Baseline::Top,
+                Baseline::Middle,
             )
             .draw(display)
             {
@@ -165,9 +164,9 @@ fn display_departures(
         }
         match Text::with_baseline(
             format!("{: >5}", d.leaving_in).as_str(),
-            Point::new(72, (i as i32 + 1) * 32),
+            Point::new(72, y_offset + ((i as i32 + 1) * height + (height / 2))),
             LARGE_FONT,
-            Baseline::Top,
+            Baseline::Middle,
         )
         .draw(display)
         {
@@ -181,4 +180,4 @@ fn display_departures(
 
 pub type MySpiDriver = SpiDeviceDriver<'static, SpiDriver<'static>>;
 pub type MySpiInterface = SPIInterfaceNoCS<MySpiDriver, PinDriver<'static, Gpio5, Output>>;
-pub type MySpiDisplay = Display<MySpiInterface, ILI9341Rgb666, PinDriver<'static, Gpio4, Output>>;
+pub type MySpiDisplay = Display<MySpiInterface, ILI9341Rgb565, PinDriver<'static, Gpio4, Output>>;

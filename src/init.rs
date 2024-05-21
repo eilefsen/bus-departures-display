@@ -1,12 +1,12 @@
-use std::error::Error;
-
 use esp_idf_svc::eventloop::EspSystemEventLoop;
 use esp_idf_svc::hal::gpio::*;
 use esp_idf_svc::hal::modem::Modem;
 use esp_idf_svc::hal::spi::SPI3;
 use esp_idf_svc::hal::spi::{config::Config, SpiDeviceDriver, SpiDriver, SpiDriverConfig};
+use esp_idf_svc::hal::units::Hertz;
 use esp_idf_svc::nvs::EspDefaultNvsPartition;
 use esp_idf_svc::sntp::{self, SyncStatus};
+use esp_idf_svc::sys::EspError;
 use esp_idf_svc::wifi::{BlockingWifi, ClientConfiguration, Configuration, EspWifi};
 
 use crate::{MySpiDriver, CONFIG};
@@ -26,7 +26,7 @@ pub fn esp() {
 
 type Wifi = BlockingWifi<EspWifi<'static>>;
 
-pub fn wifi(modem: Modem) -> Result<Wifi, Box<dyn Error>> {
+pub fn wifi(modem: Modem) -> Result<Wifi, EspError> {
     let sysloop = EspSystemEventLoop::take()?;
     let nvs = EspDefaultNvsPartition::take()?;
     let mut wifi = BlockingWifi::wrap(EspWifi::new(modem, sysloop.clone(), Some(nvs))?, sysloop)?;
@@ -58,7 +58,7 @@ pub fn wifi(modem: Modem) -> Result<Wifi, Box<dyn Error>> {
     Ok(wifi)
 }
 
-pub fn sntp() -> Result<sntp::EspSntp<'static>, Box<dyn Error>> {
+pub fn sntp() -> Result<sntp::EspSntp<'static>, EspError> {
     let sntp = sntp::EspSntp::new_default()?;
     log::info!("SNTP initialized, waiting for status!");
     while sntp.get_sync_status() != SyncStatus::Completed {}
@@ -72,10 +72,10 @@ pub fn spi(
     sdo_pin: Gpio11,
     sclk_pin: Gpio12,
     sdi_pin: Gpio13,
-) -> Result<MySpiDriver, Box<dyn Error>> {
+) -> Result<MySpiDriver, EspError> {
     let driverconfig = SpiDriverConfig::new();
     let driver = SpiDriver::new(spi3, sclk_pin, sdo_pin, Some(sdi_pin), &driverconfig)?;
-    let config = Config::new();
+    let config = Config::new().write_only(true).baudrate(Hertz(80_000_000));
     log::info!("SPI driver initialized!");
-    Ok(SpiDeviceDriver::new(driver, Some(cs_pin), &config)?)
+    SpiDeviceDriver::new(driver, Some(cs_pin), &config)
 }
