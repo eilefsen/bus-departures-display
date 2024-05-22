@@ -1,4 +1,5 @@
 use std::error::Error;
+use time::Duration;
 
 use serde::Deserialize;
 use time::{format_description::well_known::Iso8601, OffsetDateTime};
@@ -6,7 +7,7 @@ use time::{format_description::well_known::Iso8601, OffsetDateTime};
 #[derive(Debug)]
 pub struct Departure {
     pub start_time: OffsetDateTime,
-    pub leaving_in: String,
+    pub leaving_in: Duration,
     pub line_number: String,
 }
 impl Departure {
@@ -28,15 +29,16 @@ impl Departure {
 
         log::info!("{}", now);
         let diff = start - now;
-        let leaving = format!(
-            "{}:{:02}",
-            diff.whole_minutes(),
-            diff.whole_seconds() - (diff.whole_minutes() * 60)
-        );
+        // let leaving = format!(
+        //     "{}:{:02}",
+        //     diff.whole_minutes(),
+        //     diff.whole_seconds() - (diff.whole_minutes() * 60)
+        // );
+
         match leg.line {
             Some(l) => Ok(Departure {
                 start_time: start,
-                leaving_in: leaving,
+                leaving_in: diff,
                 line_number: l.public_code,
             }),
             None => Err("Leg line is null".into()),
