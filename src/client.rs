@@ -12,6 +12,8 @@ use self::types::TopLevelData;
 pub mod types;
 pub mod util;
 
+pub const SLEEP_SECONDS: u64 = 20;
+
 pub struct EnturClient {
     url: &'static str,
     headers: Vec<(&'static str, &'static str)>,

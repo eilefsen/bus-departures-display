@@ -9,7 +9,7 @@ use esp_idf_svc::sntp::{self, SyncStatus};
 use esp_idf_svc::sys::EspError;
 use esp_idf_svc::wifi::{BlockingWifi, ClientConfiguration, Configuration, EspWifi};
 
-use crate::{MySpiDriver, CONFIG};
+use crate::{types::MySpiDriver, CONFIG};
 
 pub use crate::display::init::*;
 
@@ -20,6 +20,15 @@ pub fn esp() {
     esp_idf_svc::sys::link_patches();
     // Bind the log crate to the ESP Logging facilities
     esp_idf_svc::log::EspLogger::initialize_default();
+
+    // ThreadSpawnConfiguration {
+    //     name: Some("mid-lvl-thread".as_bytes()),
+    //     stack_size: 10000,
+    //     priority: 15,
+    //     ..Default::default()
+    // }
+    // .set()
+    // .unwrap();
 
     log::info!("Esp initialized!");
 }
