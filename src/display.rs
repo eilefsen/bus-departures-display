@@ -1,6 +1,5 @@
 use std::thread::sleep;
 
-use display_interface::DisplayError;
 use embedded_graphics::Drawable;
 use embedded_graphics::{
     draw_target::DrawTarget,
@@ -11,14 +10,14 @@ use embedded_graphics::{
     text::{Baseline, Text},
 };
 use embedded_vintage_fonts::FONT_24X32;
-use esp_idf_svc::{hal::gpio::*, sys::EspError};
+use esp_idf_svc::hal::gpio::*;
 
 use crate::client::{
     types::{Departure, TopLevelData},
     SLEEP_SECONDS,
 };
 
-use self::types::{MySpiDisplay, TimeCounter};
+use self::types::{EspDisplayError, MySpiDisplay, TimeCounter};
 
 pub mod init;
 pub mod types;
@@ -28,24 +27,6 @@ pub struct DisplayWithBacklight {
 }
 
 pub const LARGE_FONT: MonoTextStyle<'_, Rgb565> = MonoTextStyle::new(&FONT_24X32, Rgb565::WHITE);
-
-#[derive(Debug)]
-pub enum EspDisplayError {
-    EspError(EspError),
-    DisplayError(DisplayError),
-}
-
-impl From<EspError> for EspDisplayError {
-    fn from(err: EspError) -> Self {
-        EspDisplayError::EspError(err)
-    }
-}
-
-impl From<DisplayError> for EspDisplayError {
-    fn from(err: DisplayError) -> Self {
-        EspDisplayError::DisplayError(err)
-    }
-}
 
 pub fn display_loop(data: TopLevelData, display: &mut MySpiDisplay) {
     let y_offset = 4;

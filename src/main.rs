@@ -12,7 +12,10 @@ pub mod display;
 pub mod init;
 pub mod types;
 use client::util::make_query;
-use display::{types::MySpiDisplay, DisplayWithBacklight, EspDisplayError};
+use display::{
+    types::{EspDisplayError, MySpiDisplay},
+    DisplayWithBacklight,
+};
 
 #[toml_cfg::toml_config]
 pub struct Config {

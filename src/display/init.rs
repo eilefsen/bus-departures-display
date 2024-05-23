@@ -14,7 +14,7 @@ use mipidsi::{models::ILI9341Rgb565, Builder, Orientation};
 
 use crate::types::MySpiDriver;
 
-use super::{DisplayWithBacklight, EspDisplayError, LARGE_FONT};
+use super::{types::EspDisplayError, DisplayWithBacklight, LARGE_FONT};
 
 pub fn display(
     spi: MySpiDriver,
