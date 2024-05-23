@@ -52,7 +52,6 @@ impl TimeCounter {
         departure: Departure,
         line: i32,
     ) -> Result<(), EspDisplayError> {
-        // let (prev_minutes, prev_seconds) = prev_departure.format_time();
         let (minutes, seconds) = departure.format_time();
 
         let leaving = format!("{}:{:02}", minutes, seconds);
